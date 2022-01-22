@@ -1,0 +1,154 @@
+<!--
+
+    THESE ARE JUST SOME OUTLINING NOTES!!!!!!!
+        - They are to be used to understand:
+            - How information is passed between components
+            - What methods and properties are needed for communication
+            - The full structure of the client 
+-->
+
+
+
+
+<!-- Code assessor would be the contianer of the whole application / page for our Lightning App-->
+<c-code-assessor>
+    <!-- Login poge will be worked on once we decide a way to do so with Client team -->
+    <c-login-page if:false={credentials}></c-login-page>
+
+    <!-- Test center is the parent component to all our current components -->
+    <c-test-center if:true={credentials}></c-test-center>
+</c-code-assessor>
+
+
+<c-test-center>
+    <!-- John's Component, container a list of test questions, will pass question to testCenter via event -->
+    <c-question-explorer if:false={question} questionList = {questionList} onQuestionSelect={handleSelect}></c-question-explorer>
+    <c-test-environment if:true={question} question={question} ></c-test-environment>
+</c-test-center>
+
+<c-test-environment>
+    <!-- Supriya's component, contains the information about the test question being answered, and previous submissions -->
+    <c-question-container question={question} ></c-question-container>
+
+
+    <!-- Miles' component, contains all the interactiable components for candidate, and controls info flow-->
+    <c-answer-container question={question} onnewsubmission={addSubmission}>
+
+        <!-- Matt's: Where the method is set, and where the candidate answers the question -->
+        <c-answer-box method={question.method}></c-answer-box>
+
+        <!-- Matt's: Where test passing results are contained, and compile results -->
+        <c-results-conainer></c-results-conainer>
+
+        <!-- Matt's: Where the submit and run code buttons are, should fire custom events for each button press to be handled -->
+        <c-action-buttons onsubmitreponse={handleSubmission} onruncode={handleCodeRun}></c-action-buttons>
+
+    </c-answer-container>
+    
+</c-test-environment>
+
+<script>
+
+    //CODE FOR THE TESTCENTER COMPONENT
+
+    import { LightningElement, api } from 'lwc';
+
+    export default class TestCenter extends LightningElement {
+        
+        // This value will be retrieved from on Apex class that makes a callout via API team.
+        //The callout will return a list of question objects from the Client Org
+        @wire
+        questionList;
+
+        //The question field determines if exploerer/environment gets rendered and send the question for the environment component
+        question;
+
+        handleSelect(event){
+            this.question = event.detail;
+        }
+
+        
+    }
+
+
+
+
+
+
+    // Code for the TestEnvironment Class;
+
+    import { LightningElement, api } from 'lwc';
+
+    export default class TestEnvironment extends LightningElement {
+        
+        // This value will be passed in from the testEnvironment component as a property.
+        @api 
+        question= {
+            Name: "question Name", // i.e. "Account Trigger"
+            Prompt: "question Prompt", //i.e "Create an a trigger on account that... "
+            Method: "method signature", //i.e "trigger AccountTrigger on Account (before insert)"
+            Tests: "test class as string"
+
+        } //The exact format of the question object may change according to the Client teams specifications
+
+        //Just a general outline, not actual code
+        addSubmission(event){
+            questionConainer.addSubmission(event.detail);
+        }
+
+        
+    }
+
+
+    //Code for the AnswerContainer class
+
+    import { LightningElement, api } from 'lwc';
+
+    export default class AnswerContainer extends LightningElement {
+        
+        // This value will be passed in from the testEnvironment component as a property.
+        @api 
+        question;
+
+        handleSubmission(){
+            //Logic to send the response to Apex class
+            // the apex class will compile/run submission and return the results/ send them to client via API
+            // pass the returned results to ResultsConainer component
+                //There should be an @api decorated method that takes in a RunTestsResult (https://developer.salesforce.com/docs/atlas.en-us.api.meta/api/sforce_api_calls_compileandtest_result.htm#)
+            
+            //This is just an outline of code, not exact:
+            let response = answerBox.getReponse(); //The answerBox component should hae @api get method that returns the current response text
+            ApexClass.submitResponse(response, this.question.tests).then((response) =>{
+                resultsBox.setTestResults(response.RunTestResults);
+                
+                let submissionEvent = new CustomEvent('newsubmission',{detail: response.RunTestResults }) // What gets displayed as a 'submission' is subject to discussion and change
+
+                this.dispatchEvent(submissionEvent);
+            });
+        }
+    
+        handleCodeRun(){
+            //Logic to send the response to Apex class
+            // The class will compile the code and return any compile-time errors
+            // The compile results will be send to the ResultsContainer component
+                //There should be an @api decorated method that takes in a CompileClassResult object (https://developer.salesforce.com/docs/atlas.en-us.api.meta/api/sforce_api_calls_compileandtest_result.htm#)
+    
+            //This is just an outline of code, not exact:
+            let response = answerBox.getReponse(); 
+            
+            ApexClass.compileClass(response).then((response) =>{
+                resultsBox.setCompileResults(response);
+            });
+    
+        }
+
+
+    }
+
+
+
+
+
+    
+
+</script>
